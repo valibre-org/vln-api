@@ -1,6 +1,6 @@
 .PHONY: valor_bin default clean build_plugins pack
 
-PLUGINS=blockchain
+PLUGINS=blockchain wallet
 OUT_DIR=.build
 NATIVE_PLUGINS=$(PLUGINS:%=${OUT_DIR}/plugins/%)
 CODEDEPLOY_FILES=$(shell find -L .codedeploy -type f)
