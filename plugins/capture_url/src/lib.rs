@@ -55,7 +55,8 @@ lazy_static! {
             Err(_) => "http://localhost:4444".to_owned(),
         };
 
-        let _ = Url::parse(&host).expect("Env var `WEB_DRIVER_HOST` expected to be a valid URL");
+        let _ = Url::parse(&host)
+            .expect("Env var `CAPTURE_URL_WEB_DRIVER_HOST` expected to be a valid URL");
         host
     };
 }
