@@ -19,7 +19,7 @@ enum WindowDimensions {
 }
 
 impl WindowDimensions {
-    fn get_size_in_pixel(&self) -> (u16, u16) {
+    fn get_size_in_pixels(&self) -> (u16, u16) {
         match self {
             Self::Desktop => (1920, 1080),
             Self::Tablet => (1024, 768),
@@ -70,7 +70,7 @@ async fn capture_url(url: &Url, dimensions: &Option<WindowDimensions>) -> WebDri
     let (width, height) = dimensions
         .as_ref()
         .unwrap_or_else(|| &WindowDimensions::Desktop)
-        .get_size_in_pixel();
+        .get_size_in_pixels();
 
     // The navigation bar has a height of 74 px. It is excluded when taking a screenshot (something desirable) making
     // the screenshot's height less than the value specified in `dimensions`. By adding its height when setting
@@ -165,14 +165,13 @@ mod tests {
         let mut response = handler(request).await;
         let buffer = response.body_bytes().await.unwrap();
         let image = image::load_from_memory_with_format(&buffer, image::ImageFormat::Png).unwrap();
-        let (actual_width, actual_height) = image.dimensions();
-        let (expected_width, expected_height) = {
-            let (width, height) = dimensions.get_size_in_pixel();
+        let actual_dimensions = image.dimensions();
+        let expected_dimensions = {
+            let (width, height) = dimensions.get_size_in_pixels();
             (u32::from(width), u32::from(height))
         };
 
-        assert!(expected_width == actual_width);
-        assert!(expected_height == actual_height);
+        assert!(actual_dimensions == expected_dimensions);
     }
 
     #[async_std::test]
@@ -205,14 +204,13 @@ mod tests {
         let image_data = *splitted_data_uri.get(1).unwrap();
         let buffer = &base64::decode(image_data).unwrap();
         let image = image::load_from_memory_with_format(buffer, image::ImageFormat::Png).unwrap();
-        let (actual_width, actual_height) = image.dimensions();
-        let (expected_width, expected_height) = {
-            let (width, height) = dimensions.get_size_in_pixel();
+        let actual_dimensions = image.dimensions();
+        let expected_dimensions = {
+            let (width, height) = dimensions.get_size_in_pixels();
             (u32::from(width), u32::from(height))
         };
 
-        assert!(expected_width == actual_width);
-        assert!(expected_height == actual_height);
+        assert!(actual_dimensions == expected_dimensions);
     }
 
     fn setup_local_server() -> httptest::Server {
