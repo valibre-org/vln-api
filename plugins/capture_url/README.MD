@@ -8,7 +8,7 @@ Generate screenshots from any website.
 curl --header "Content-Type: application/json" \
   --request POST \
   --data '{ "url": "https://google.com", "dimensions": { "type" : "Phone" } }' \
-  http://runtime.path/capture_url/capture-url
+  http://runtime.path/_capture_url/capture-url
 ```
 
 The response will be the image. If `--header "Accept: text/plain"` is specified, then the response will be the base64 encoded image.

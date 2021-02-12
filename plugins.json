@@ -1,4 +1,4 @@
 [
   { "type": "native", "name": "blockchain", "prefix": "_vln" },
-  { "type": "native", "name": "capture_url", "prefix": "capture_url" }
+  { "type": "native", "name": "capture_url", "prefix": "_capture_url" }
 ]
