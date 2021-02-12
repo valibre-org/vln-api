@@ -1,15 +1,13 @@
+use http::{
+    content::Accept,
+    convert::{Deserialize, Serialize},
+    mime, Request, Response,
+};
 use lazy_static::lazy_static;
 use path_tree::PathTree;
 use std::env;
 use thirtyfour::{prelude::*, OptionRect};
-use valor::{
-    http::{
-        content::Accept,
-        convert::{Deserialize, Serialize},
-        mime, Request, Response,
-    },
-    *,
-};
+use valor::*;
 
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(tag = "type")]
