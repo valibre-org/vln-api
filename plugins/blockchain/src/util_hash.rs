@@ -1,4 +1,5 @@
 use blake2::{Blake2b, Digest};
+use bs58;
 use core::hash::Hasher;
 use frame_metadata::StorageHasher;
 
@@ -53,4 +54,25 @@ fn twox_hash(input: &[u8]) -> Vec<u8> {
     LittleEndian::write_u64(&mut dest[8..16], r1);
 
     dest.into()
+}
+
+/// Gives a short friendly transaction-id
+/// Encode the first 32bits to base58
+fn get_short_tx_id(input: &str) -> Vec<u8> {
+    let input = if input.starts_with("0x") {
+        hex::decode(&input[2..]).unwrap_or_else(|_| input.into())
+    } else {
+        input.into()
+    };
+    bs58::encode(&input[0..4]).into_vec()
+}
+
+#[test]
+fn get_short_tx_id_works() {
+    let result =
+        get_short_tx_id("0xd7bd44af293e45e0dc7583d12c6e75492410b3d74b01fe87371dc2eea1637a57");
+    assert_eq!("6WquqG".as_bytes().to_vec(), result);
+
+    let result_2 = get_short_tx_id("0xed5ad5f258eef6a9745042bde7d46e8a5254c183");
+    assert_eq!("74taQq".as_bytes().to_vec(), result_2);
 }
