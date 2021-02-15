@@ -1,5 +1,5 @@
 use blake2::{Blake2b, Digest};
-use bs58::encode;
+use bs58;
 use core::hash::Hasher;
 use frame_metadata::StorageHasher;
 
