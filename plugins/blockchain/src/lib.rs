@@ -1,5 +1,6 @@
 mod util_hash;
 mod util_meta;
+pub mod util_txid;
 
 use frame_metadata::{RuntimeMetadata, RuntimeMetadataPrefixed, StorageEntryType, StorageHasher};
 use http::{content::Accept, mime, Mime};
