@@ -1,0 +1,11 @@
+[package]
+name = "utils"
+version = "0.1.0"
+authors = ["Daniel Olano <daniel@olanod.com>"]
+edition = "2018"
+
+[dependencies]
+bs58 = "0.4.0"
+
+[lib]
+crate-type = ["cdylib", "lib"]
