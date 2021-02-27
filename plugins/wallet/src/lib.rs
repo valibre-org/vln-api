@@ -5,6 +5,7 @@ use once_cell::sync::Lazy;
 use path_tree::PathTree;
 use std::env;
 use valor::*;
+use webauthn_rs::{ephemeral::WebauthnEphemeralConfig, Webauthn};
 
 const TEST_ACCOUNT: &str = "0x329e7f8361cd64c7a60f4e75cd273a52c42930aa9d26955e3e7111eb4136432c";
 static SEED: Lazy<String> = Lazy::new(|| env::var("WALLET_SEED").unwrap_or(TEST_ACCOUNT.into()));
@@ -20,9 +21,10 @@ async fn get_wallet() -> VWallet {
 }
 
 enum Cmd {
-    DemoOrRegister,
-    Open,
+    Demo,
+    Register,
     Sign,
+    Unlock,
 }
 
 type Result<T> = std::result::Result<T, Error>;
@@ -36,8 +38,9 @@ type Result<T> = std::result::Result<T, Error>;
 async fn wallet_handler(mut req: Request) -> Response {
     let routes = {
         let mut p = PathTree::new();
-        p.insert("/", Cmd::DemoOrRegister);
-        p.insert("/unlock", Cmd::Open);
+        p.insert("/", Cmd::Demo);
+        p.insert("/register", Cmd::Register);
+        p.insert("/unlock", Cmd::Unlock);
         p.insert("/sign", Cmd::Sign);
         p
     };
@@ -51,14 +54,15 @@ async fn wallet_handler(mut req: Request) -> Response {
     let wallet = get_wallet().await;
 
     match (req.method(), action) {
-        (Method::Get, Cmd::DemoOrRegister) => {
+        (Method::Get, Cmd::Demo) => {
             let mut res: Response = include_bytes!("demo.html")[..].into();
-            res.append_header(headers::CONTENT_TYPE, "text/html");
+            res.append_header(headers::CONTENT_TYPE, http::mime::HTML);
             Ok(res)
         }
-        (Method::Post, Cmd::DemoOrRegister) => register_user(&mut req).await,
-        (Method::Get, Cmd::Open) => send_challenge().await,
-        (Method::Post, Cmd::Open) => unlock_user_wallet(&mut req).await,
+        (Method::Get, Cmd::Register) => send_reg_challenge(&mut req, &mut new_webauthn()).await,
+        (Method::Post, Cmd::Register) => register_user(&mut req).await,
+        (Method::Get, Cmd::Unlock) => send_auth_challenge(&mut req, &mut new_webauthn()).await,
+        (Method::Post, Cmd::Unlock) => unlock_user_wallet(&mut req).await,
         (Method::Post, Cmd::Sign) => sign_payload(&mut req, &wallet).await,
         _ => Ok(StatusCode::MethodNotAllowed.into()),
     }
@@ -91,14 +95,59 @@ async fn register_user(_req: &mut Request) -> Result<Response> {
     todo!()
 }
 
-async fn send_challenge() -> Result<Response> {
-    todo!()
+type WebAuthn = Webauthn<WebauthnEphemeralConfig>;
+fn new_webauthn() -> WebAuthn {
+    Webauthn::new(WebauthnEphemeralConfig::new(
+        "vln",
+        "api.valiu.dev",
+        "123",
+        None,
+    ))
+}
+
+/// TODO store registration state
+/// Send a WebAuthn challenge for passwordless registration
+async fn send_reg_challenge(req: &Request, wan: &mut WebAuthn) -> Result<Response> {
+    const USER_PARAM: &str = "u";
+    let name = req
+        .url()
+        .query_pairs()
+        .find(|(q, _)| q == USER_PARAM)
+        .ok_or(Error::MissingParamerter("name".into()))?
+        .1;
+    let (challenge, _) = wan
+        .generate_challenge_register(&name.to_string(), None)
+        .map_err(|_| Error::Unknown)?;
+
+    let mut res: Response = Body::from_json(&challenge)?.into();
+    res.append_header(headers::CONTENT_TYPE, http::mime::JSON);
+    Ok(res)
+}
+
+/// TODO store authentication state
+/// Send a WebAuthn challenge for passwordless login
+async fn send_auth_challenge(req: &Request, wan: &mut WebAuthn) -> Result<Response> {
+    const USER_PARAM: &str = "u";
+    let _name = req
+        .url()
+        .query_pairs()
+        .find(|(q, _)| q == USER_PARAM)
+        .ok_or(Error::MissingParamerter("name".into()))?
+        .1;
+    let (challenge, _) = wan
+        .generate_challenge_authenticate(vec![], None)
+        .map_err(|_| Error::Unknown)?;
+
+    let mut res: Response = Body::from_json(&challenge)?.into();
+    res.append_header(headers::CONTENT_TYPE, http::mime::JSON);
+    Ok(res)
 }
 
 async fn unlock_user_wallet(_req: &mut Request) -> Result<Response> {
     todo!()
 }
 
+// build a cookie jar from a request used to access individual cookies
 fn request_cookies(req: &Request) -> Result<CookieJar> {
     let cookie_header = req
         .header(&headers::COOKIE)
@@ -118,6 +167,14 @@ pub enum Error {
     Unknown,
     RootWalletLocked,
     WalletClosed,
+    MissingParamerter(String),
+    Http(http::Error),
+}
+
+impl From<http::Error> for Error {
+    fn from(err: http::Error) -> Self {
+        Error::Http(err)
+    }
 }
 
 impl From<Error> for Response {
@@ -125,6 +182,8 @@ impl From<Error> for Response {
         match e {
             Error::RootWalletLocked => StatusCode::ServiceUnavailable.into(),
             Error::WalletClosed => StatusCode::Unauthorized.into(),
+            Error::Http(err) => err.status().into(),
+            Error::MissingParamerter(_) => StatusCode::BadRequest.into(),
             _ => StatusCode::InternalServerError.into(),
         }
     }

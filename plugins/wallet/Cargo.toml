@@ -9,6 +9,7 @@ path-tree = "0.1.12"
 valor = { version = "0.4.7-beta.0", package = "valor_core", features = ["util"] }
 libwallet = { git = "https://github.com/valibre-org/libwallet.git" }
 once_cell = "1.5.2"
+webauthn-rs = "0.2.5"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 valor = { version = "0.4.7-beta.0", package = "valor_core", features = ["util", "web"] }
