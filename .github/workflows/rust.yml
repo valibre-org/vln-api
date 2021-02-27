@@ -27,6 +27,7 @@ jobs:
 
   publish:
     name: Publish codedeploy archive
+    if: ${{ github.event_name == 'push' }}
     runs-on: self-hosted
     needs: build
     steps:
