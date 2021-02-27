@@ -20,6 +20,7 @@ async fn get_wallet() -> VWallet {
 }
 
 enum Cmd {
+    DemoOrRegister,
     Open,
     Sign,
 }
@@ -35,7 +36,8 @@ type Result<T> = std::result::Result<T, Error>;
 async fn wallet_handler(mut req: Request) -> Response {
     let routes = {
         let mut p = PathTree::new();
-        p.insert("/open", Cmd::Open);
+        p.insert("/", Cmd::DemoOrRegister);
+        p.insert("/unlock", Cmd::Open);
         p.insert("/sign", Cmd::Sign);
         p
     };
@@ -49,8 +51,14 @@ async fn wallet_handler(mut req: Request) -> Response {
     let wallet = get_wallet().await;
 
     match (req.method(), action) {
+        (Method::Get, Cmd::DemoOrRegister) => {
+            let mut res: Response = include_bytes!("demo.html")[..].into();
+            res.append_header(headers::CONTENT_TYPE, "text/html");
+            Ok(res)
+        }
+        (Method::Post, Cmd::DemoOrRegister) => register_user(&mut req).await,
         (Method::Get, Cmd::Open) => send_challenge().await,
-        (Method::Post, Cmd::Open) => open_wallet().await,
+        (Method::Post, Cmd::Open) => unlock_user_wallet(&mut req).await,
         (Method::Post, Cmd::Sign) => sign_payload(&mut req, &wallet).await,
         _ => Ok(StatusCode::MethodNotAllowed.into()),
     }
@@ -79,11 +87,15 @@ async fn sign_payload(req: &mut Request, wallet: &VWallet) -> Result<Response> {
     Ok(bytes.into())
 }
 
+async fn register_user(_req: &mut Request) -> Result<Response> {
+    todo!()
+}
+
 async fn send_challenge() -> Result<Response> {
     todo!()
 }
 
-async fn open_wallet() -> Result<Response> {
+async fn unlock_user_wallet(_req: &mut Request) -> Result<Response> {
     todo!()
 }
 
