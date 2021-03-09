@@ -2,5 +2,6 @@
 members = [
 	"plugins/blockchain",
 	"plugins/wallet",
+	"plugins/transfers",
 	"utils",
 ]

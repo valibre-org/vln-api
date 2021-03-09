@@ -335,6 +335,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "base64-url"
+version = "1.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8a7558a139be0909d407d70873248681e70bac73595c3ded9dba98a625c8acb"
+dependencies = [
+ "base64 0.13.0",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2815,6 +2824,15 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-serde",
+]
+
+[[package]]
+name = "transfers"
+version = "0.1.0"
+dependencies = [
+ "base64-url",
+ "serde",
+ "valor_core",
 ]
 
 [[package]]
