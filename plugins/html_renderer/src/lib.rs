@@ -65,7 +65,7 @@ impl RequestHandler for Handler<'_> {
         match (action, req.method()) {
             (Cmd::Templates, Method::Get) => json!(self.html_renderer.get_templates()).into(),
             (Cmd::Templates, Method::Post) => {
-                let (template) = match req.body_json().await {
+                let template = match req.body_json().await {
                     Ok(RegisterTemplateInput { template }) => template,
                     _ => return StatusCode::BadRequest.into(),
                 };
