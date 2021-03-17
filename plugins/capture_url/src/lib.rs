@@ -50,7 +50,7 @@ lazy_static! {
     static ref WEB_DRIVER_HOST: String = {
         let host = match env::var("CAPTURE_URL_WEB_DRIVER_HOST") {
             Ok(host) => host,
-            Err(_) => "http://localhost:4444".to_owned(),
+            _ => "http://localhost:4444/wd/hub".to_owned(),
         };
 
         let _ = Url::parse(&host)
@@ -147,11 +147,9 @@ mod tests {
 
     #[async_std::test]
     async fn it_returns_a_correct_png_image_with_given_dimensions() {
-        let server = setup_local_server();
-
         let dimensions = WindowDimensions::Phone;
         let input = Input {
-            url: server.url_str("/"),
+            url: "http://webserver".into(),
             dimensions: Some(dimensions.clone()),
         };
 
@@ -176,11 +174,9 @@ mod tests {
 
     #[async_std::test]
     async fn it_returns_a_correct_base64_encoded_png_image_with_given_dimensions() {
-        let server = setup_local_server();
-
         let dimensions = WindowDimensions::Tablet;
         let input = Input {
-            url: server.url_str("/"),
+            url: "http://webserver".into(),
             dimensions: Some(dimensions.clone()),
         };
 
@@ -211,20 +207,5 @@ mod tests {
         };
 
         assert!(actual_dimensions == expected_dimensions);
-    }
-
-    fn setup_local_server() -> httptest::Server {
-        use httptest::{matchers::*, responders::*, Expectation, Server};
-
-        let server = Server::run();
-        server.expect(
-            Expectation::matching(any()).times(..).respond_with(
-                status_code(200)
-                    .append_header("Content-Type", "text/html")
-                    .body("<h1>Hello, world!</h1><h2>Capture this.</h2>"),
-            ),
-        );
-
-        server
     }
 }

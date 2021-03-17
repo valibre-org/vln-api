@@ -30,12 +30,11 @@ Possible values for `dimensions` are:
 
 ## Tests
 
-The tests in this plugin require a running instance of `geckodriver` at address specified in `CAPTURE_URL_WEB_DRIVER_HOST` (defaults to `http://localhost:4444`)
+The tests in this plugin require a running instance of geckodriver or selenium at address specified in `CAPTURE_URL_WEB_DRIVER_HOST` (defaults to `http://localhost:4444/wd/hub`). A `docker-compose.yml` is included and it will setup Selenium and a sample web server.
 
 ### To run the tests
 
 ```sh
-cargo test -- --test-threads=1
+docker-compose up
+cargo test
 ```
-
-We need to limit the tests to a single thread because the selenium server only supports 1 browser instance at a time.

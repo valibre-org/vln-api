@@ -1,0 +1,16 @@
+version: "3"
+services:
+  selenium:
+    image: selenium/standalone-firefox:86.0
+    volumes:
+      - "/dev/shm:/dev/shm"
+    ports:
+      - "4444:4444"
+    environment:
+      - NODE_MAX_INSTANCES=2
+      - NODE_MAX_SESSION=2
+
+  webserver:
+    image: nginxdemos/hello
+    ports:
+      - "4242:80"
