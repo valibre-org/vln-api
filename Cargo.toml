@@ -1,5 +1,8 @@
 [workspace]
 members = [
 	"plugins/blockchain",
-	"plugins/capture_url"
+	"plugins/wallet",
+	"plugins/transfers",
+	"plugins/capture_url",
+	"utils",
 ]
