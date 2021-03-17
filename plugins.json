@@ -1,4 +1,6 @@
 [
-  { "type": "native", "name": "blockchain", "prefix": "_vln" },
-  { "type": "native", "name": "html_renderer" }
+	{"type":"native","name":"blockchain", "prefix": "_vln"},
+	{"type":"native","name":"wallet"},
+	{"type":"native","name":"transfers"},
+  	{"type":"native","name":"html_renderer"}
 ]

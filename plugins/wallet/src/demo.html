@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Wallet plugin</title>
+	<style>
+	html, body { all: unset; height: 100%; }
+	body { display: flex; flex-direction: column; justify-content: center; }
+	section { margin: 0 auto; padding: 1rem; width: 40vw; max-width: 500px; }
+	dialog { min-width: 40vw; }
+	button { width: 100%; display: block; }
+	form button { margin-top: 1rem }
+	form input { width: auto; }
+	</style>
+	<script>
+	function openDialogNew() { document.getElementById('new-wallet').showModal() }
+	function openDialogUnlock() { document.getElementById('unlock-wallet').showModal() }
+	</script>
+</head>
+<body>
+	<section id="new">
+	<button onclick="openDialogNew()">Create Account</button>
+	<dialog id="new-wallet">
+		<form type="dialog" method="POST" action="/wallet">
+			<label for="new-name">Welcome</label>
+			<input id="new-name"
+				name="name"
+				placeholder="Pepito Perez" 
+				autocomplete="name" 
+				required>
+			<hr>
+			<p>Now some basic info about you</p>
+			<label for="new-email">E-mail</label>
+			<input id="new-email"
+				type="email"
+				name="email"
+				placeholder="me@example.com"
+				autocomplete
+				required>
+			<button>Create Account</button>
+		</form>
+	</dialog>
+	</section>
+
+	<section id="unlock">
+	<button onclick="openDialogUnlock()">Open Account</button>
+	<dialog id="unlock-wallet">
+		<p>Welcome back!</p>
+		<form type="dialog" method="POST" action="/wallet/unlock">
+			<label for="unlock-email">E-mail</label>
+			<input id="unlock-email"
+				type="email"
+				name="email"
+				autocomplete="username email"
+				placeholder="me@example.com">
+			<button>Unlock wallet</button>
+		</form>
+	</dialog>
+	</section>
+</body>
+</html>
