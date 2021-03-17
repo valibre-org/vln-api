@@ -1,1 +1,4 @@
-[{"type":"native","name":"blockchain", "prefix": "_vln"}]
+[
+  { "type": "native", "name": "blockchain", "prefix": "_vln" },
+  { "type": "native", "name": "html_renderer" }
+]
