@@ -6,27 +6,23 @@ Generate screenshots from any website.
 
 ```sh
 curl --header "Content-Type: application/json" \
-  --data '{ "url": "https://google.com", "dimensions": { "type" : "Phone" } }' \
-  --output image.png \
-  http://runtime.path/_capture_url/capture-url
+  "http://runtime.path/capture_url/capture-url?url=https://google.com&dimensions=1920,1080" \
+  --output image.png
 ```
 
 The response will be the image. If `--header "Accept: text/plain"` is specified, then the response will be the base64 encoded image.
 
 ```sh
 curl --header "Content-Type: application/json" \
-  --data '{ "url": "https://google.com", "dimensions": { "type" : "Phone" } }' \
+  "http://runtime.path/capture_url/capture-url?url=https://google.com&dimensions=1024,768" \
   --header "Accept: text/plain" \
-  --output image-as-base64.txt \
-  http://runtime.path/_capture_url/capture-url
+  --output image-as-base64.txt
 ```
 
-Possible values for `dimensions` are:
+Possible query parameters are:
 
-- `{ "type": "Phone" }`: 450 (width) x 800 (height)
-- `{ "type": "Tablet" }`: 1024 x 768
-- `{ "type": "Desktop" }`: 1920 x 1080
-- `{ "type": "CustomDimensions", width: number, height: number }`: `width` x `height`
+- url: [Percentage-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding) URL to capture the image from. Most HTTP client libs encode query parameters automatically. [Data URLs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs) are valid values (once encoded).
+- dimensions: Comma separated width and height values of the image, eg. `dimensions=width,height` or `dimensions=(width,height)`. Optional. Defaults to `450,800`.
 
 ## Tests
 

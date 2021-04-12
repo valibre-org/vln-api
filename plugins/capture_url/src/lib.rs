@@ -1,38 +1,32 @@
-use http::{
-    content::Accept,
-    convert::{Deserialize, Serialize},
-    mime, Request, Response,
-};
+use http::{content::Accept, mime, Request, Response};
 use lazy_static::lazy_static;
 use path_tree::PathTree;
+use std::collections::HashMap;
 use std::env;
+use std::num::ParseIntError;
+use std::str::FromStr;
 use thirtyfour::{prelude::*, OptionRect};
 use valor::*;
 
-#[derive(Clone, Deserialize, Serialize)]
-#[serde(tag = "type")]
-enum WindowDimensions {
-    Phone,
-    Tablet,
-    Desktop,
-    CustomDimensions { width: u16, height: u16 },
+struct ImageDimensions {
+    width: u16,
+    height: u16,
 }
 
-impl WindowDimensions {
-    fn get_size_in_pixels(&self) -> (u16, u16) {
-        match self {
-            Self::Desktop => (1920, 1080),
-            Self::Tablet => (1024, 768),
-            Self::Phone => (450, 800),
-            Self::CustomDimensions { width, height } => (*width, *height),
-        }
+impl FromStr for ImageDimensions {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let dimensions: Vec<&str> = s
+            .trim_matches(|p| p == '(' || p == ')')
+            .split(',')
+            .collect();
+
+        Ok(ImageDimensions {
+            width: dimensions[0].parse::<u16>()?,
+            height: dimensions[1].parse::<u16>()?,
+        })
     }
-}
-
-#[derive(Deserialize, Serialize)]
-struct Input {
-    url: String,
-    dimensions: Option<WindowDimensions>,
 }
 
 enum Cmd {
@@ -59,7 +53,7 @@ lazy_static! {
     };
 }
 
-async fn capture_url(url: &Url, dimensions: &Option<WindowDimensions>) -> WebDriverResult<Vec<u8>> {
+async fn capture_url(url: &Url, dimensions: &Option<ImageDimensions>) -> WebDriverResult<Vec<u8>> {
     let caps = {
         let mut caps = DesiredCapabilities::firefox();
         caps.set_headless()?;
@@ -67,10 +61,11 @@ async fn capture_url(url: &Url, dimensions: &Option<WindowDimensions>) -> WebDri
     };
 
     let driver = WebDriver::new(&WEB_DRIVER_HOST, &caps).await?;
-    let (width, height) = dimensions
-        .as_ref()
-        .unwrap_or_else(|| &WindowDimensions::Desktop)
-        .get_size_in_pixels();
+    let ImageDimensions { width, height } =
+        dimensions.as_ref().unwrap_or_else(|| &ImageDimensions {
+            width: 450,
+            height: 800,
+        });
 
     // The navigation bar has a height of 74 px. It is excluded when taking a screenshot (something desirable) making
     // the screenshot's height less than the value specified in `dimensions`. By adding its height when setting
@@ -78,17 +73,23 @@ async fn capture_url(url: &Url, dimensions: &Option<WindowDimensions>) -> WebDri
     // See https://github.com/mozilla/geckodriver/issues/1744
     const NAVIGATION_BAR_HEIGHT: i32 = 74;
     driver
-        .set_window_rect(
-            OptionRect::new()
-                .with_size(i32::from(width), i32::from(height) + NAVIGATION_BAR_HEIGHT),
-        )
+        .set_window_rect(OptionRect::new().with_size(
+            i32::from(*width),
+            i32::from(*height) + NAVIGATION_BAR_HEIGHT,
+        ))
         .await?;
 
     driver.get(url.as_str()).await?;
     driver.screenshot_as_png().await
 }
 
-async fn capture_handler(mut req: Request) -> Response {
+async fn capture_handler(req: Request) -> Response {
+    let hash_query: HashMap<_, _> = req.url().query_pairs().into_owned().collect();
+    let url = hash_query.get("url");
+    let dimensions = hash_query
+        .get("dimensions")
+        .and_then(|dimensions| dimensions.parse::<ImageDimensions>().ok());
+
     let response_mime = Accept::from_headers(&req)
         .unwrap_or_default()
         .unwrap_or_else(Accept::new)
@@ -96,8 +97,8 @@ async fn capture_handler(mut req: Request) -> Response {
         .map(|c| c.value().as_str().into())
         .unwrap_or_else(|_| mime::PNG);
 
-    let (url, dimensions) = match req.body_json().await {
-        Ok(Input { url, dimensions }) => (url, dimensions),
+    let url = match url {
+        Some(url) => url,
         _ => return StatusCode::BadRequest.into(),
     };
 
@@ -134,7 +135,7 @@ async fn handler(req: Request) -> Response {
         .unwrap_or_else(|| (&Cmd::Unknown, vec![]));
 
     match (action, req.method()) {
-        (Cmd::Capture, Method::Post) => capture_handler(req).await,
+        (Cmd::Capture, Method::Get) => capture_handler(req).await,
         (Cmd::Capture, _) => StatusCode::MethodNotAllowed.into(),
         (Cmd::Unknown, _) => StatusCode::NotFound.into(),
     }
@@ -147,16 +148,25 @@ mod tests {
 
     #[async_std::test]
     async fn it_returns_a_correct_png_image_with_given_dimensions() {
-        let dimensions = WindowDimensions::Phone;
-        let input = Input {
-            url: "http://webserver".into(),
-            dimensions: Some(dimensions.clone()),
+        let dimensions = ImageDimensions {
+            width: 450,
+            height: 800,
         };
 
         let request = {
-            let mut request = Request::new(Method::Post, "http://localhost/capture-url");
-            let request_body = Body::from_json(&input).unwrap();
-            request.set_body(request_body);
+            let url_to_capture = "http://webserver";
+            let url = Url::parse_with_params(
+                "http://localhost/capture-url",
+                &[
+                    ("url", url_to_capture),
+                    (
+                        "dimensions",
+                        &format!("{},{}", dimensions.width, dimensions.height),
+                    ),
+                ],
+            )
+            .unwrap();
+            let request = Request::new(Method::Get, url);
             request
         };
 
@@ -165,7 +175,7 @@ mod tests {
         let image = image::load_from_memory_with_format(&buffer, image::ImageFormat::Png).unwrap();
         let actual_dimensions = image.dimensions();
         let expected_dimensions = {
-            let (width, height) = dimensions.get_size_in_pixels();
+            let ImageDimensions { width, height } = dimensions;
             (u32::from(width), u32::from(height))
         };
 
@@ -174,17 +184,26 @@ mod tests {
 
     #[async_std::test]
     async fn it_returns_a_correct_base64_encoded_png_image_with_given_dimensions() {
-        let dimensions = WindowDimensions::Tablet;
-        let input = Input {
-            url: "http://webserver".into(),
-            dimensions: Some(dimensions.clone()),
+        let dimensions = ImageDimensions {
+            width: 1024,
+            height: 768,
         };
 
         let request = {
-            let mut request = Request::new(Method::Post, "http://localhost/capture-url");
+            let url_to_capture = "http://webserver";
+            let url = Url::parse_with_params(
+                "http://localhost/capture-url",
+                &[
+                    ("url", url_to_capture),
+                    (
+                        "dimensions",
+                        &format!("{},{}", dimensions.width, dimensions.height),
+                    ),
+                ],
+            )
+            .unwrap();
+            let mut request = Request::new(Method::Get, url);
             request.insert_header("Accept", "text/plain");
-            let request_body = Body::from_json(&input).unwrap();
-            request.set_body(request_body);
             request
         };
 
@@ -202,7 +221,7 @@ mod tests {
         let image = image::load_from_memory_with_format(buffer, image::ImageFormat::Png).unwrap();
         let actual_dimensions = image.dimensions();
         let expected_dimensions = {
-            let (width, height) = dimensions.get_size_in_pixels();
+            let ImageDimensions { width, height } = dimensions;
             (u32::from(width), u32::from(height))
         };
 

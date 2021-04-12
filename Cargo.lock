@@ -522,7 +522,6 @@ dependencies = [
  "image",
  "lazy_static",
  "path-tree",
- "serde",
  "thirtyfour",
  "valor_core",
 ]
