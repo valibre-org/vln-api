@@ -1,6 +1,5 @@
 use http::{content::Accept, mime, Request, Response};
 use lazy_static::lazy_static;
-use path_tree::PathTree;
 use std::collections::HashMap;
 use std::env;
 use std::num::ParseIntError;
@@ -29,18 +28,7 @@ impl FromStr for ImageDimensions {
     }
 }
 
-enum Cmd {
-    Capture,
-    Unknown,
-}
-
 lazy_static! {
-    static ref ROUTER: PathTree<Cmd> = {
-        let mut p = PathTree::new();
-        p.insert("/capture-url", Cmd::Capture);
-        p.insert("*", Cmd::Unknown);
-        p
-    };
     static ref WEB_DRIVER_HOST: String = {
         let host = match env::var("CAPTURE_URL_WEB_DRIVER_HOST") {
             Ok(host) => host,
@@ -129,15 +117,12 @@ async fn capture_handler(req: Request) -> Response {
 #[vlugin]
 async fn handler(req: Request) -> Response {
     let url = req.url();
+    let method = req.method();
 
-    let (action, _params) = ROUTER
-        .find(url.path())
-        .unwrap_or_else(|| (&Cmd::Unknown, vec![]));
-
-    match (action, req.method()) {
-        (Cmd::Capture, Method::Get) => capture_handler(req).await,
-        (Cmd::Capture, _) => StatusCode::MethodNotAllowed.into(),
-        (Cmd::Unknown, _) => StatusCode::NotFound.into(),
+    match (url.path(), method) {
+        ("/", Method::Get) => capture_handler(req).await,
+        ("/", _) => StatusCode::MethodNotAllowed.into(),
+        _ => StatusCode::NotFound.into(),
     }
 }
 
@@ -156,7 +141,7 @@ mod tests {
         let request = {
             let url_to_capture = "http://webserver";
             let url = Url::parse_with_params(
-                "http://localhost/capture-url",
+                "http://localhost.test",
                 &[
                     ("url", url_to_capture),
                     (
@@ -192,7 +177,7 @@ mod tests {
         let request = {
             let url_to_capture = "http://webserver";
             let url = Url::parse_with_params(
-                "http://localhost/capture-url",
+                "http://localhost.test",
                 &[
                     ("url", url_to_capture),
                     (

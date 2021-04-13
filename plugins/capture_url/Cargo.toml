@@ -7,7 +7,6 @@ edition = "2018"
 [dependencies]
 base64 = "0.13.0"
 lazy_static = "1.4.0"
-path-tree = "0.1.12"
 thirtyfour = {version = "0.22.2", features = ["async-std-runtime"]}
 valor = {version = "0.4.7-beta.0", package = "valor_core", features = ["util"]}
 

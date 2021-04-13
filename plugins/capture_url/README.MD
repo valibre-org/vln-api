@@ -6,7 +6,7 @@ Generate screenshots from any website.
 
 ```sh
 curl --header "Content-Type: application/json" \
-  "http://runtime.path/capture_url/capture-url?url=https://google.com&dimensions=1920,1080" \
+  "http://runtime.path/capture_url?url=https://google.com&dimensions=1920,1080" \
   --output image.png
 ```
 
@@ -14,7 +14,7 @@ The response will be the image. If `--header "Accept: text/plain"` is specified,
 
 ```sh
 curl --header "Content-Type: application/json" \
-  "http://runtime.path/capture_url/capture-url?url=https://google.com&dimensions=1024,768" \
+  "http://runtime.path/capture_url?url=https://google.com&dimensions=1024,768" \
   --header "Accept: text/plain" \
   --output image-as-base64.txt
 ```

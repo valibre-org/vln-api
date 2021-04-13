@@ -521,7 +521,6 @@ dependencies = [
  "base64 0.13.0",
  "image",
  "lazy_static",
- "path-tree",
  "thirtyfour",
  "valor_core",
 ]
