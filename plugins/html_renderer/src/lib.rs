@@ -1,11 +1,12 @@
 mod template_renderer;
+mod utils;
 
 use http::convert::{json, Deserialize, Serialize};
 use lazy_static::lazy_static;
 use path_tree::PathTree;
-use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use serde_json::Value as JsonValue;
 use template_renderer::TemplateRenderer;
+use utils::format_html_data_url;
 use valor::*;
 
 #[derive(Deserialize, Serialize)]
@@ -18,10 +19,14 @@ struct RegisterTemplatePayload {
     template_id: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "type")]
 enum RenderOutput {
     Html,
-    DataUrl,
+    DataUrl {
+        redirect_url: Option<String>,
+        query_param_name: Option<String>,
+    },
 }
 
 #[derive(Deserialize, Serialize)]
@@ -103,13 +108,30 @@ impl RequestHandler for Handler<'_> {
                     };
 
                 match output {
-                    Some(RenderOutput::DataUrl) => format!(
-                        "data:text/html,{}",
-                        utf8_percent_encode(&rendered_template, NON_ALPHANUMERIC)
-                    ),
-                    _ => rendered_template,
+                    Some(RenderOutput::DataUrl {
+                        redirect_url: Some(redirect_url),
+                        query_param_name,
+                    }) => {
+                        let data_url = format_html_data_url(&rendered_template);
+                        let query_param_name = query_param_name.unwrap_or("url".into());
+                        let url = {
+                            match Url::parse_with_params(
+                                &redirect_url,
+                                &[(query_param_name, &data_url)],
+                            ) {
+                                Ok(url) => url,
+                                _ => return StatusCode::BadRequest.into(),
+                            }
+                        };
+                        let mut response = Response::new(StatusCode::SeeOther);
+                        let _ = response.insert_header("Location", url.to_string());
+                        response
+                    }
+                    Some(RenderOutput::DataUrl { .. }) => {
+                        format_html_data_url(&rendered_template).into()
+                    }
+                    _ => rendered_template.into(),
                 }
-                .into()
             }
             (Cmd::Templates, _) | (Cmd::RenderTemplate, _) => StatusCode::MethodNotAllowed.into(),
             (Cmd::Unknown, _) => StatusCode::NotFound.into(),
@@ -163,6 +185,40 @@ mod tests {
         let output = response.body_string().await.unwrap();
 
         assert_eq!(output, "<p>Hello, John Doe.</p>");
+    }
+
+    #[async_std::test]
+    async fn it_redirects_to_url_with_image_data() {
+        let handler = super::Handler::default();
+        let template = "<p>Hello, {{firstname}} {{lastname}}.</p>";
+        let template_id = register_template(&handler, template.into()).await;
+
+        let request = {
+            let input = RenderTemplateInput {
+                template_id: template_id.clone(),
+                data: Some(json!({ "firstname": "John", "lastname": "Doe" })),
+                output: Some(RenderOutput::DataUrl {
+                    redirect_url: Some("https://test.com".into()),
+                    query_param_name: Some("data_url".into()),
+                }),
+            };
+            let mut request = Request::new(Method::Post, "http://localhost/render");
+            let request_body = Body::from_json(&input).unwrap();
+            request.set_body(request_body);
+            request
+        };
+
+        let response = handler.handle_request(request).await;
+        assert_eq!(response.status(), StatusCode::SeeOther);
+
+        let location = response
+            .header("Location")
+            .unwrap()
+            .get(0)
+            .unwrap()
+            .as_str();
+        let expected_location = "https://test.com/?data_url=data%3Atext%2Fhtml%2C%253Cp%253EHello%252C%2520John%2520Doe%252E%253C%252Fp%253E";
+        assert_eq!(location, expected_location);
     }
 
     async fn register_template<'a>(handler: &super::Handler<'a>, template: &str) -> String {
