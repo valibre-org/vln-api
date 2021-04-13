@@ -3,5 +3,6 @@ members = [
 	"plugins/blockchain",
 	"plugins/wallet",
 	"plugins/transfers",
+	"plugins/capture_url",
 	"utils",
 ]

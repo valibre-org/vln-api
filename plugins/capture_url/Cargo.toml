@@ -1,0 +1,22 @@
+[package]
+name = "capture_url"
+version = "0.1.0"
+authors = ["Jorge Villalobos <jorge.villalobos2809@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+base64 = "0.13.0"
+lazy_static = "1.4.0"
+thirtyfour = {version = "0.22.2", features = ["async-std-runtime"]}
+valor = {version = "0.4.7-beta.0", package = "valor_core", features = ["util"]}
+
+[dev-dependencies]
+async-std = "1.9.0"
+image = "0.23.13"
+
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+valor = {version = "0.4.7-beta.0", package = "valor_core", features = ["util", "web"]}
+
+[lib]
+crate-type = ["cdylib", "lib"]
