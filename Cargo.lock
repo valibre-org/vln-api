@@ -449,7 +449,8 @@ dependencies = [
  "hex",
  "path-tree",
  "sube",
- "valor_core 0.4.7-beta.0",
+ "valor_core 0.5.2-beta.0",
+ "valor_plugin_build",
 ]
 
 [[package]]
