@@ -1,24 +1,16 @@
 use http::cookies::{CookieJar, Key};
-use http::{headers, Cookie};
+use http::{headers, mime, Body, Cookie, Method, Request, Response, StatusCode};
 use libwallet::{sr25519, Pair, SimpleVault, Wallet};
-use once_cell::sync::Lazy;
 use path_tree::PathTree;
-use std::env;
 use valor::*;
 use webauthn_rs::{ephemeral::WebauthnEphemeralConfig, Webauthn};
 
 const TEST_ACCOUNT: &str = "0x329e7f8361cd64c7a60f4e75cd273a52c42930aa9d26955e3e7111eb4136432c";
-static SEED: Lazy<String> = Lazy::new(|| env::var("WALLET_SEED").unwrap_or(TEST_ACCOUNT.into()));
 
 type KeyPair = sr25519::Pair;
 type VWallet = Wallet<SimpleVault<KeyPair>>;
-
-// NOTE initially we'll use a single root account and derive user wallets from it
-async fn get_wallet() -> VWallet {
-    let mut w: VWallet = SEED.parse::<SimpleVault<_>>().expect("bad seed").into();
-    let _ = w.unlock("").await;
-    w
-}
+type Router = PathTree<Cmd>;
+type Result<T> = std::result::Result<T, Error>;
 
 enum Cmd {
     Demo,
@@ -27,36 +19,44 @@ enum Cmd {
     Unlock,
 }
 
-type Result<T> = std::result::Result<T, Error>;
+#[vlugin]
+pub async fn on_create(cx: &mut Context) {
+    let mut wallet: VWallet = cx
+        .config::<&str>()
+        .unwrap_or(TEST_ACCOUNT)
+        .parse::<SimpleVault<_>>()
+        .expect("root seed")
+        .into();
+    wallet.unlock("").await.expect("root wallet");
+    cx.set(wallet);
+
+    cx.set({
+        let mut p = Router::new();
+        p.insert("/", Cmd::Demo);
+        p.insert("/register", Cmd::Register);
+        p.insert("/unlock", Cmd::Unlock);
+        p.insert("/sign", Cmd::Sign);
+        p
+    });
+}
 
 /// Wallet plugin
 ///
 /// `GET	/open` Use it to get a challenge that must be signed by a known private key
 /// `POST	/open` Provide credentials to set an encrypted cookie that unlocks the user wallet
 /// `POST	/sign` Sign a binary payload with active user's key
-#[vlugin]
-async fn wallet_handler(mut req: Request) -> Response {
-    let routes = {
-        let mut p = PathTree::new();
-        p.insert("/", Cmd::Demo);
-        p.insert("/register", Cmd::Register);
-        p.insert("/unlock", Cmd::Unlock);
-        p.insert("/sign", Cmd::Sign);
-        p
-    };
+pub async fn on_request(cx: &Context, mut req: Request) -> http::Result<Response> {
+    let routes = cx.get::<Router>();
     let url = req.url();
-    let action = routes.find(url.path());
-    if action.is_none() {
-        return StatusCode::NotFound.into();
-    }
-    let (action, _params) = action.unwrap();
+    let (action, _params) = routes
+        .find(url.path())
+        .ok_or_else(|| http::Error::from_str(StatusCode::NotFound, ""))?;
+    let wallet = cx.get::<VWallet>();
 
-    let wallet = get_wallet().await;
-
-    match (req.method(), action) {
+    let res = match (req.method(), action) {
         (Method::Get, Cmd::Demo) => {
             let mut res: Response = include_bytes!("demo.html")[..].into();
-            res.append_header(headers::CONTENT_TYPE, http::mime::HTML);
+            res.append_header(headers::CONTENT_TYPE, mime::HTML);
             Ok(res)
         }
         (Method::Get, Cmd::Register) => send_reg_challenge(&mut req, &mut new_webauthn()).await,
@@ -65,8 +65,8 @@ async fn wallet_handler(mut req: Request) -> Response {
         (Method::Post, Cmd::Unlock) => unlock_user_wallet(&mut req).await,
         (Method::Post, Cmd::Sign) => sign_payload(&mut req, &wallet).await,
         _ => Ok(StatusCode::MethodNotAllowed.into()),
-    }
-    .unwrap_or_else(Into::into)
+    }?;
+    Ok(res)
 }
 
 const USER_WALLET: &str = "wallet";
@@ -120,7 +120,7 @@ async fn send_reg_challenge(req: &Request, wan: &mut WebAuthn) -> Result<Respons
         .map_err(|_| Error::Unknown)?;
 
     let mut res: Response = Body::from_json(&challenge)?.into();
-    res.append_header(headers::CONTENT_TYPE, http::mime::JSON);
+    res.append_header(headers::CONTENT_TYPE, mime::JSON);
     Ok(res)
 }
 
@@ -139,7 +139,7 @@ async fn send_auth_challenge(req: &Request, wan: &mut WebAuthn) -> Result<Respon
         .map_err(|_| Error::Unknown)?;
 
     let mut res: Response = Body::from_json(&challenge)?.into();
-    res.append_header(headers::CONTENT_TYPE, http::mime::JSON);
+    res.append_header(headers::CONTENT_TYPE, mime::JSON);
     Ok(res)
 }
 
@@ -177,14 +177,16 @@ impl From<http::Error> for Error {
     }
 }
 
-impl From<Error> for Response {
+impl From<Error> for http::Error {
     fn from(e: Error) -> Self {
         match e {
-            Error::RootWalletLocked => StatusCode::ServiceUnavailable.into(),
-            Error::WalletClosed => StatusCode::Unauthorized.into(),
-            Error::Http(err) => err.status().into(),
-            Error::MissingParamerter(_) => StatusCode::BadRequest.into(),
-            _ => StatusCode::InternalServerError.into(),
+            Error::RootWalletLocked => {
+                Self::from_str(StatusCode::ServiceUnavailable, "Bad configuration")
+            }
+            Error::WalletClosed => Self::from_str(StatusCode::Unauthorized, "Unlock wallet"),
+            Error::Http(err) => err,
+            Error::MissingParamerter(_) => Self::from_str(StatusCode::BadRequest, "Foo"),
+            _ => Self::from_str(StatusCode::InternalServerError, ""),
         }
     }
 }
@@ -195,7 +197,10 @@ mod tests {
 
     #[async_std::test]
     async fn signs_request_payload() {
-        let w = get_wallet().await;
+        let mut cx = Context::default();
+        on_create(&mut cx).await;
+
+        let w = cx.get::<VWallet>();
         let root = w.root_account().expect("unlocked");
         let user_wallet = "//foo";
 
@@ -211,7 +216,7 @@ mod tests {
         let message = &b"message"[..];
         req.set_body(message);
 
-        let mut res = wallet_handler(req).await;
+        let mut res = on_request(&cx, req).await.unwrap();
         assert_eq!(res.status(), StatusCode::Ok);
 
         let body = res.body_bytes().await.expect("response");
