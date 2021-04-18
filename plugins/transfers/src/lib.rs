@@ -1,8 +1,9 @@
+use http::{Method, Request, Response, StatusCode};
 use serde::Deserialize;
 use valor::*;
 
 #[vlugin]
-async fn transfers(req: Request) -> Response {
+pub async fn on_request(req: Request) -> Response {
     match req.method() {
         Method::Get => StatusCode::NotFound.into(),
         Method::Post => decode_to_sign(req)
