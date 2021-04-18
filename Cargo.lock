@@ -78,12 +78,6 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.4.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "739f4a8db6605981345c5654f3a85b056ce52f37a39d34da03f25bf2151ea16e"
-
-[[package]]
-name = "ahash"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f200cbb1e856866d9eade941cf3aa0c5d7dd36f74311c4273b494f4ef036957"
@@ -449,7 +443,7 @@ dependencies = [
  "hex",
  "path-tree",
  "sube",
- "valor_core 0.5.2-beta.0",
+ "valor_core",
  "valor_plugin_build",
 ]
 
@@ -1316,20 +1310,11 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
-dependencies = [
- "ahash 0.4.7",
-]
-
-[[package]]
-name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 dependencies = [
- "ahash 0.7.2",
+ "ahash",
 ]
 
 [[package]]
@@ -3492,7 +3477,8 @@ version = "0.1.0"
 dependencies = [
  "base64-url",
  "serde",
- "valor_core 0.4.7-beta.0",
+ "valor_core",
+ "valor_plugin_build",
 ]
 
 [[package]]
@@ -3601,51 +3587,22 @@ dependencies = [
 
 [[package]]
 name = "valor_core"
-version = "0.4.7-beta.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5722a691eb7f88e7e225ca65156d237c9b467aa7b17cb2e546cc54b78ad92556"
-dependencies = [
- "async-trait",
- "hashbrown 0.9.1",
- "http-types",
- "js-sys",
- "path-tree",
- "valor_plugin 0.4.0-alpha.2",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "wee_alloc",
-]
-
-[[package]]
-name = "valor_core"
 version = "0.5.2-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dbcfa397225f2542c3e7d39123dca9e2fe434cd58f556a82ef32d3ffdf8ad164"
 dependencies = [
  "async-trait",
- "hashbrown 0.11.2",
+ "hashbrown",
  "http-types",
  "js-sys",
  "path-tree",
  "serde",
  "serde_json",
- "valor_plugin 0.5.1-beta.0",
+ "valor_plugin",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
  "wee_alloc",
-]
-
-[[package]]
-name = "valor_plugin"
-version = "0.4.0-alpha.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "726ac6c830abce065ab515184360ba450f840a710b029825d8e5becc5f37f559"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -3714,7 +3671,7 @@ dependencies = [
  "async-std",
  "libwallet",
  "path-tree",
- "valor_core 0.5.2-beta.0",
+ "valor_core",
  "valor_plugin_build",
  "webauthn-rs",
 ]
