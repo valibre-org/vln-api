@@ -5,7 +5,7 @@ OUT_DIR=.build
 NATIVE_PLUGINS=$(PLUGINS:%=${OUT_DIR}/plugins/%)
 CODEDEPLOY_FILES=$(shell find -L .codedeploy -type f)
 VALOR_BIN=~/.cargo/bin/valor_bin
-VALOR_VER ?= 0.4.7-beta.0
+VALOR_VER ?= 0.5.2-beta.0
 
 ifeq ($(OS),Windows_NT)
     uname_S := Windows
