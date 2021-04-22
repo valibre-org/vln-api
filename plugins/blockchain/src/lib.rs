@@ -1,3 +1,4 @@
+use http::Status;
 use http::{content::Accept, mime, Method, Request, Response, StatusCode};
 use path_tree::PathTree;
 use sube::{codec::Encode, http::Backend, Backend as _, Sube};
@@ -40,7 +41,7 @@ pub async fn on_request(cx: &Context, req: Request) -> http::Result<Response> {
         .flatten()
         .unwrap_or(DEFAULT_NODE_URL);
     let node: Sube<_> = Backend::new(node_url).into();
-    let meta = node.try_init_meta().await?;
+    let meta = node.try_init_meta().await.status(StatusCode::BadGateway)?;
 
     // Use content negotiation to determine the response type
     // By default return data in SCALE encoded binary format
