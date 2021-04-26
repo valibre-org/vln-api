@@ -1,42 +1,45 @@
-use std::env;
-
-// use http::{content::Accept, mime, Mime};
-use http::{content::Accept, mime};
+use http::{content::Accept, mime, Method, Request, Response, StatusCode};
 use path_tree::PathTree;
 use sube::{codec::Encode, http::Backend, Backend as _, Sube};
 use valor::*;
 
-static DEFAULT_NODE_URL: &str = "http://vln.valiu";
-const SCALE_MIME: &str = "application/scale";
-const BASE58_MIME: &str = "application/base58";
+type Router = PathTree<Cmd>;
 
 enum Cmd {
     Meta,
     Storage,
 }
 
+static DEFAULT_NODE_URL: &str = "http://vln.valiu";
+const SCALE_MIME: &str = "application/scale";
+const BASE58_MIME: &str = "application/base58";
+
 #[vlugin]
-async fn blockchain(req: Request) -> Response {
-    handler(req).await.unwrap_or_else(|err| err.status().into())
+pub async fn on_create(cx: &mut Context) {
+    cx.set({
+        let mut r = Router::new();
+        r.insert("/meta", Cmd::Meta);
+        r.insert("/:module/:item", Cmd::Storage);
+        r.insert("/:module/:item/*", Cmd::Storage);
+        r
+    });
 }
 
-async fn handler(req: Request) -> Result<Response, http::Error> {
-    let routes = {
-        let mut p = PathTree::new();
-        p.insert("/meta", Cmd::Meta);
-        p.insert("/:module/:item", Cmd::Storage);
-        p.insert("/:module/:item/*", Cmd::Storage);
-        p
-    };
+pub async fn on_request(cx: &Context, req: Request) -> http::Result<Response> {
+    let routes = cx.get::<Router>();
     let url = req.url();
     let action = routes.find(url.path());
     if action.is_none() {
-        return Ok(StatusCode::NotFound.into());
+        return Ok(http::StatusCode::NotFound.into());
     }
     let (action, _params) = action.unwrap();
 
-    let node_url = env::var("BLOCKCHAIN_NODE_URL").unwrap_or_else(|_| DEFAULT_NODE_URL.into());
-    let node: Sube<_> = Backend::new(node_url.as_str()).into();
+    let node_url = cx
+        .raw_config()
+        .map(VluginConfig::as_str)
+        .flatten()
+        .unwrap_or(DEFAULT_NODE_URL);
+    let node: Sube<_> = Backend::new(node_url).into();
     let meta = node.try_init_meta().await?;
 
     // Use content negotiation to determine the response type
