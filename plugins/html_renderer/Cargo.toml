@@ -6,7 +6,6 @@ version = "0.1.0"
 
 [dependencies]
 handlebars = "3.5.2"
-lazy_static = "1.4.0"
 path-tree = "0.1.12"
 percent-encoding = "2.1.0"
 serde = "1.0.123"

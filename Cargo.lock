@@ -1412,7 +1412,6 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "handlebars",
- "lazy_static",
  "path-tree",
  "percent-encoding",
  "serde",
