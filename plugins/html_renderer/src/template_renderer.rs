@@ -17,12 +17,11 @@ impl<'a> Default for TemplateRenderer<'a> {
 impl<'a> TemplateRenderer<'a> {
     pub fn get_templates(&self) -> Vec<String> {
         let registry = self.registry.borrow();
-        let templates: Vec<String> = registry
+        registry
             .get_templates()
             .into_iter()
             .map(|(id, _template)| id.clone())
-            .collect();
-        templates
+            .collect()
     }
 
     pub fn register_template(&self, template: &str) -> Result<String, ()> {
