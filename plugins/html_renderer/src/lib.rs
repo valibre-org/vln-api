@@ -5,7 +5,6 @@ use http::{
     convert::{json, Deserialize, Serialize},
     Body, Method, Request, Response, StatusCode,
 };
-use path_tree::PathTree;
 use serde_json::Value as JsonValue;
 use template_renderer::TemplateRenderer;
 use url::Url;
@@ -39,35 +38,17 @@ struct RenderTemplateInput {
     output: Option<RenderOutput>,
 }
 
-enum Cmd {
-    Templates,
-    RenderTemplate,
-    Unknown,
-}
-
 #[vlugin]
 pub async fn on_create(cx: &mut Context) {
     cx.set(TemplateRenderer::default());
 }
 
 pub async fn on_request(cx: &Context, mut req: Request) -> Response {
-    let router = {
-        let mut p = PathTree::new();
-        p.insert("/templates", Cmd::Templates);
-        p.insert("/render", Cmd::RenderTemplate);
-        p.insert("*", Cmd::Unknown);
-        p
-    };
     let html_renderer = cx.get::<TemplateRenderer>();
-    let (action, _params) = {
-        router
-            .find(req.url().path())
-            .unwrap_or_else(|| (&Cmd::Unknown, vec![]))
-    };
 
-    match (action, req.method()) {
-        (Cmd::Templates, Method::Get) => json!(html_renderer.get_templates()).into(),
-        (Cmd::Templates, Method::Post) => {
+    match (req.url().path(), req.method()) {
+        ("/templates", Method::Get) => json!(html_renderer.get_templates()).into(),
+        ("/templates", Method::Post) => {
             let template = match req.body_json().await {
                 Ok(RegisterTemplateInput { template }) => template,
                 _ => return StatusCode::BadRequest.into(),
@@ -89,7 +70,7 @@ pub async fn on_request(cx: &Context, mut req: Request) -> Response {
             };
             response
         }
-        (Cmd::RenderTemplate, Method::Post) => {
+        ("/render", Method::Post) => {
             let (template_id, data, output) = match req.body_json().await {
                 Ok(RenderTemplateInput {
                     template_id,
@@ -130,8 +111,8 @@ pub async fn on_request(cx: &Context, mut req: Request) -> Response {
                 _ => rendered_template.into(),
             }
         }
-        (Cmd::Templates, _) | (Cmd::RenderTemplate, _) => StatusCode::MethodNotAllowed.into(),
-        (Cmd::Unknown, _) => StatusCode::NotFound.into(),
+        ("/templates", _) | ("/render", _) => StatusCode::MethodNotAllowed.into(),
+        _ => StatusCode::NotFound.into(),
     }
 }
 

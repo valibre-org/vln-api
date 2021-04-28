@@ -1412,7 +1412,6 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "handlebars",
- "path-tree",
  "percent-encoding",
  "serde",
  "serde_json",
