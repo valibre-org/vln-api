@@ -3,7 +3,7 @@ mod utils;
 
 use http::{
     convert::{json, Deserialize, Serialize},
-    Body, Method, Request, Response, StatusCode,
+    Body, Method, Request, Response, Status, StatusCode,
 };
 use serde_json::Value as JsonValue;
 use template_renderer::TemplateRenderer;
@@ -43,47 +43,34 @@ pub async fn on_create(cx: &mut Context) {
     cx.set(TemplateRenderer::default());
 }
 
-pub async fn on_request(cx: &Context, mut req: Request) -> Response {
+pub async fn on_request(cx: &Context, mut req: Request) -> http::Result<Response> {
     let html_renderer = cx.get::<TemplateRenderer>();
 
-    match (req.url().path(), req.method()) {
+    let response = match (req.url().path(), req.method()) {
         ("/templates", Method::Get) => json!(html_renderer.get_templates()).into(),
         ("/templates", Method::Post) => {
-            let template = match req.body_json().await {
-                Ok(RegisterTemplateInput { template }) => template,
-                _ => return StatusCode::BadRequest.into(),
-            };
-
-            let template_id = match html_renderer.register_template(&template) {
-                Ok(template_id) => template_id,
-                Err(_) => return StatusCode::BadRequest.into(),
-            };
-
+            let RegisterTemplateInput { template } = req.body_json().await?;
+            let template_id = html_renderer
+                .register_template(&template)
+                .map_err(|_| http::Error::from_str(StatusCode::BadRequest, ""))?;
             let response = {
                 let mut response = Response::new(StatusCode::Created);
-                let body = match Body::from_json(&RegisterTemplatePayload { template_id }) {
-                    Ok(body) => body,
-                    _ => return StatusCode::InternalServerError.into(),
-                };
+                let body = Body::from_json(&RegisterTemplatePayload { template_id })?;
                 response.set_body(body);
                 response
             };
             response
         }
         ("/render", Method::Post) => {
-            let (template_id, data, output) = match req.body_json().await {
-                Ok(RenderTemplateInput {
-                    template_id,
-                    data,
-                    output,
-                }) => (template_id, data, output),
-                _ => return StatusCode::BadRequest.into(),
-            };
+            let RenderTemplateInput {
+                template_id,
+                data,
+                output,
+            } = req.body_json().await?;
 
-            let rendered_template = match html_renderer.render_template(&template_id, &data) {
-                Some(rendered_template) => rendered_template,
-                _ => return StatusCode::BadRequest.into(),
-            };
+            let rendered_template = html_renderer
+                .render_template(&template_id, &data)
+                .status(StatusCode::BadRequest)?;
 
             match output {
                 Some(RenderOutput::DataUrl {
@@ -92,15 +79,8 @@ pub async fn on_request(cx: &Context, mut req: Request) -> Response {
                 }) => {
                     let data_url = format_html_data_url(&rendered_template);
                     let query_param_name = query_param_name.unwrap_or("url".into());
-                    let url = {
-                        match Url::parse_with_params(
-                            &redirect_url,
-                            &[(query_param_name, &data_url)],
-                        ) {
-                            Ok(url) => url,
-                            _ => return StatusCode::BadRequest.into(),
-                        }
-                    };
+                    let url =
+                        Url::parse_with_params(&redirect_url, &[(query_param_name, &data_url)])?;
                     let mut response = Response::new(StatusCode::SeeOther);
                     let _ = response.insert_header("Location", url.to_string());
                     response
@@ -112,8 +92,10 @@ pub async fn on_request(cx: &Context, mut req: Request) -> Response {
             }
         }
         ("/templates", _) | ("/render", _) => StatusCode::MethodNotAllowed.into(),
-        _ => StatusCode::NotFound.into(),
-    }
+        _ => StatusCode::NotImplemented.into(),
+    };
+
+    Ok(response)
 }
 
 #[cfg(test)]
@@ -134,7 +116,7 @@ mod tests {
         let cx = test_context().await;
         let template_id = register_template(&cx, template.into()).await;
         let request = Request::new(Method::Get, "http://localhost/templates");
-        let mut response = on_request(&cx, request).await;
+        let mut response = on_request(&cx, request).await.unwrap();
         let output: Vec<String> = response.body_json().await.unwrap();
 
         assert_eq!(output, vec![template_id.clone()]);
@@ -159,7 +141,7 @@ mod tests {
             request.set_body(request_body);
             request
         };
-        let mut response = on_request(&cx, request).await;
+        let mut response = on_request(&cx, request).await.unwrap();
         let output = response.body_string().await.unwrap();
 
         assert_eq!(output, "<p>Hello, John Doe.</p>");
@@ -186,7 +168,7 @@ mod tests {
             request
         };
 
-        let response = on_request(&cx, request).await;
+        let response = on_request(&cx, request).await.unwrap();
         assert_eq!(response.status(), StatusCode::SeeOther);
 
         let location = response
@@ -210,7 +192,7 @@ mod tests {
             request
         };
 
-        let mut response = on_request(cx, request).await;
+        let mut response = on_request(cx, request).await.unwrap();
         let RegisterTemplatePayload { template_id } = response.body_json().await.unwrap();
         template_id
     }
