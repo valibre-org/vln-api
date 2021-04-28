@@ -1,5 +1,6 @@
+use base58::ToBase58;
 use http::Status;
-use http::{content::Accept, mime, Method, Request, Response, StatusCode};
+use http::{content::Accept, Method, Request, Response, StatusCode};
 use path_tree::PathTree;
 use sube::{codec::Encode, http::Backend, Backend as _, Sube};
 use valor::*;
@@ -11,9 +12,16 @@ enum Cmd {
     Storage,
 }
 
-static DEFAULT_NODE_URL: &str = "http://vln.valiu";
-const SCALE_MIME: &str = "application/scale";
-const BASE58_MIME: &str = "application/base58";
+const DEFAULT_NODE_URL: &str = "http://localhost:9933";
+const VALID_MIMES: &[&str] = &[
+    "application/base58",
+    "application/json",
+    "application/scale",
+    "text/plain",
+];
+const BASE58_MIME: &str = VALID_MIMES[0];
+const JSON_MIME: &str = VALID_MIMES[1];
+const SCALE_MIME: &str = VALID_MIMES[2];
 
 #[vlugin]
 pub async fn on_create(cx: &mut Context) {
@@ -24,6 +32,12 @@ pub async fn on_create(cx: &mut Context) {
         r.insert("/:module/:item/*", Cmd::Storage);
         r
     });
+    cx.set(
+        VALID_MIMES
+            .iter()
+            .map(|m| http::Mime::from(*m))
+            .collect::<Vec<_>>(),
+    );
 }
 
 pub async fn on_request(cx: &Context, req: Request) -> http::Result<Response> {
@@ -45,34 +59,36 @@ pub async fn on_request(cx: &Context, req: Request) -> http::Result<Response> {
 
     // Use content negotiation to determine the response type
     // By default return data in SCALE encoded binary format
-    let response_type: http::Mime = Accept::from_headers(&req)
+    let mime_res: http::Mime = Accept::from_headers(&req)
         .expect("Valid Accept header")
         .unwrap_or_else(Accept::new)
-        .negotiate(&[
-            mime::PLAIN.essence().into(),
-            SCALE_MIME.into(),
-            BASE58_MIME.into(),
-        ])
+        .negotiate(cx.get::<Vec<_>>())
         .map(|c| c.value().as_str().into())
         .unwrap_or_else(|_| SCALE_MIME.into());
 
     Ok(match (req.method(), action) {
-        (Method::Get, Cmd::Meta) => response_from_type(&response_type, &meta.encode()),
+        (Method::Get, Cmd::Meta) => {
+            let mut res: Response = match mime_res.essence() {
+                SCALE_MIME => meta.encode().into(),
+                BASE58_MIME => meta.encode().to_base58().into(),
+                #[cfg(feature = "serde_json")]
+                JSON_MIME => serde_json::to_string(meta)?.into(),
+                _ => hex::encode(meta.encode()).into(),
+            };
+            res.set_content_type(mime_res);
+            res
+        }
         (Method::Get, Cmd::Storage) => {
             let q = node.query_raw(url.path().trim_start_matches('/')).await?;
-            response_from_type(&response_type, &q)
+            let mut res: Response = match mime_res.essence() {
+                SCALE_MIME => q.into(),
+                BASE58_MIME => q.to_base58().into(),
+                JSON_MIME => todo!(),
+                _ => hex::encode(q).into(),
+            };
+            res.set_content_type(mime_res);
+            res
         }
         _ => StatusCode::MethodNotAllowed.into(),
     })
-}
-
-fn response_from_type(mime: &http::Mime, res: &[u8]) -> Response {
-    use base58::ToBase58;
-    let mut res: Response = match mime.essence() {
-        "text/plain" => hex::encode(res).into(),
-        BASE58_MIME => res.to_base58().into(),
-        _ => res.into(),
-    };
-    res.set_content_type(mime.clone());
-    res
 }
