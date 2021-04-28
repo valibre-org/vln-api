@@ -46,10 +46,6 @@ impl<'a> TemplateRenderer<'a> {
     where
         T: Serialize,
     {
-        if self.registry.borrow().has_template(&template_id) {
-            return self.registry.borrow().render(&template_id, data).ok();
-        }
-
-        None
+        self.registry.borrow().render(&template_id, data).ok()
     }
 }
