@@ -24,7 +24,7 @@ impl<'a> TemplateRenderer<'a> {
             .collect()
     }
 
-    pub fn register_template(&self, template: &str) -> Result<String, ()> {
+    pub fn register_template(&self, template: &str) -> Option<String> {
         let template_id = {
             use std::hash::{Hash, Hasher};
             let mut hasher = twox_hash::XxHash64::default();
@@ -35,10 +35,9 @@ impl<'a> TemplateRenderer<'a> {
         self.registry
             .borrow_mut()
             .register_template_string(&template_id, template)
-            // TODO: map relevant errors to custom enum type.
-            .map_err(|_| ())?;
+            .ok()?;
 
-        Ok(template_id)
+        Some(template_id)
     }
 
     pub fn render_template<T>(&self, template_id: &str, data: &T) -> Option<String>

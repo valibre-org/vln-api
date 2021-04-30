@@ -52,7 +52,8 @@ pub async fn on_request(cx: &Context, mut req: Request) -> http::Result<Response
             let RegisterTemplateInput { template } = req.body_json().await?;
             let template_id = html_renderer
                 .register_template(&template)
-                .map_err(|_| http::Error::from_str(StatusCode::BadRequest, ""))?;
+                .status(StatusCode::BadRequest)?;
+
             let response = {
                 let mut response = Response::new(StatusCode::Created);
                 let body = Body::from_json(&RegisterTemplatePayload { template_id })?;
