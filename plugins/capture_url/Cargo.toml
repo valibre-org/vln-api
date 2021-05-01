@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 base64 = "0.13.0"
-thirtyfour = { version = "0.23.0", features = ["async-std-runtime"] }
+thirtyfour = { version = "0.23.1", default-features = false, features = ["async-std-runtime"] }
 url = "2.2.1"
 valor = { git = "https://github.com/valibre-org/valor.git", branch = "main", package = "valor_core", features = ["util", "serde"] }
 

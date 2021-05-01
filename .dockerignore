@@ -1,0 +1,5 @@
+target
+Containerfile
+.dockerignore
+.git
+.gitignore

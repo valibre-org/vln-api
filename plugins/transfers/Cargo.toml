@@ -5,7 +5,7 @@ authors = ["Daniel Olano <daniel@olanod.com>"]
 edition = "2018"
 
 [dependencies]
-base64-url = "1.4.9"
+base64-url = "1.4.10"
 serde = "1.0.125"
 valor = { git = "https://github.com/valibre-org/valor.git", branch = "main", package = "valor_core", features = ["util", "serde"] }
 
