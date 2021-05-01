@@ -6,12 +6,12 @@ edition = "2018"
 
 [dependencies]
 path-tree = "0.1.12"
-valor = { version = "0.5.2-beta.0", package = "valor_core", features = ["util", "serde"] }
+valor = { git = "https://github.com/valibre-org/valor.git", branch = "main", package = "valor_core", features = ["util", "serde"] }
 libwallet = { git = "https://github.com/valibre-org/libwallet.git" }
 webauthn-rs = "0.2.5"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-valor = { version = "0.5.2-beta.0", package = "valor_core", features = ["util", "serde", "web"] }
+valor = { git = "https://github.com/valibre-org/valor.git", branch = "main", package = "valor_core", features = ["util", "serde", "web"] }
 
 [build-dependencies]
 vlugin = { git = "https://github.com/valibre-org/valor.git", branch = "main", package = "valor_plugin_build" }

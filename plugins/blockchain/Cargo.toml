@@ -9,7 +9,7 @@ sube = { git = "https://github.com/valibre-org/sube.git", branch = "main" }
 base58 = "0.1.0"
 hex = "0.4.3"
 path-tree = "0.1.12"
-valor = { version = "0.5.2-beta.0", package = "valor_core", features = ["util", "serde"] }
+valor = { git = "https://github.com/valibre-org/valor.git", branch = "main", package = "valor_core", features = ["util", "serde"] }
 serde_json = { version = "1.0.64", default-features = false, optional = true }
 
 [features]
@@ -19,7 +19,7 @@ default = ["serde_json"]
 vlugin = { git = "https://github.com/valibre-org/valor.git", branch = "main", package = "valor_plugin_build" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-valor = { version = "0.5.2-beta.0", package = "valor_core", features = ["util", "web"] }
+valor = { git = "https://github.com/valibre-org/valor.git", branch = "main", package = "valor_core", features = ["util", "web"] }
 
 [lib]
 crate-type = ["cdylib", "lib"]
