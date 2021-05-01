@@ -1,0 +1,26 @@
+[package]
+authors = ["Jorge Villalobos <jorge.villalobos2809@gmail.com>"]
+edition = "2018"
+name = "html_renderer"
+version = "0.1.0"
+
+[dependencies]
+handlebars = "3.5.2"
+percent-encoding = "2.1.0"
+serde = "1.0.123"
+serde_json = "1.0.62"
+twox-hash = "1.6.0"
+url = "2.2.1"
+valor = { git = "https://github.com/valibre-org/valor.git", branch = "main", package = "valor_core", features = ["util", "serde"] }
+
+[dev-dependencies]
+async-std = {version = "1.9.0", features = ["attributes"]}
+
+[build-dependencies]
+vlugin = {git = "https://github.com/valibre-org/valor.git", branch = "main", package = "valor_plugin_build"}
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+valor = { git = "https://github.com/valibre-org/valor.git", branch = "main", package = "valor_core", features = ["util", "web"] }
+
+[lib]
+crate-type = ["cdylib", "lib"]

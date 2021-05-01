@@ -1,6 +1,6 @@
 .PHONY: run valor_bin default clean build_plugins pack
 
-PLUGINS=blockchain wallet transfers capture_url
+PLUGINS=blockchain wallet transfers capture_url html_renderer
 OUT_DIR=.build
 NATIVE_PLUGINS=$(PLUGINS:%=${OUT_DIR}/plugins/%)
 CODEDEPLOY_FILES=$(shell find -L .codedeploy -type f)

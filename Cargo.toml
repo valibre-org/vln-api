@@ -4,5 +4,6 @@ members = [
 	"plugins/wallet",
 	"plugins/transfers",
 	"plugins/capture_url",
+	"plugins/html_renderer",
 	"utils",
 ]
