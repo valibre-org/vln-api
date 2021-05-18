@@ -10,7 +10,7 @@ ifeq ($(UNAME), Linux)
 	LIB_EXT=.so
 endif
 
-PLUGINS=blockchain wallet transfers capture_url html_renderer
+PLUGINS=blockchain capture_url html_renderer
 OUT_DIR ?= .build
 NATIVE_PLUGINS_PATTERN=${OUT_DIR}/plugins/${LIB_PRE}%${LIB_EXT}
 NATIVE_PLUGINS=$(PLUGINS:%=${NATIVE_PLUGINS_PATTERN})
@@ -18,10 +18,10 @@ CODEDEPLOY_FILES=$(shell find -L .codedeploy -type f)
 VALOR_VER ?= 0.5.2-beta.0
 VALOR_GIT=https://github.com/valibre-org/valor.git
 
-default: plugins valor
+default: valor plugins
 
-run: $(OUT_DIR)/valor $(NATIVE_PLUGINS)
-	LD_LIBRARY_PATH=$(<D)/plugins $< -p plugins.json
+run: valor plugins
+	LD_LIBRARY_PATH=$(OUT_DIR)/plugins $(OUT_DIR)/$< -p plugins.json
 
 pack: app.zip
 
